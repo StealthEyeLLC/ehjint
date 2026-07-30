@@ -15,6 +15,7 @@ import (
 	"github.com/StealthEyeLLC/ehjint/internal/contracts"
 	"github.com/StealthEyeLLC/ehjint/internal/guestagent"
 	"github.com/StealthEyeLLC/ehjint/internal/registry"
+	"github.com/StealthEyeLLC/ehjint/internal/vmm"
 )
 
 // Run executes one EHJINT invocation and returns its stable process exit status.
@@ -74,21 +75,45 @@ func Run(argv0 string, args []string, stdout, stderr io.Writer) int {
 }
 
 func runInternal(args []string, stderr io.Writer) int {
-	if len(args) != 4 || args[0] != "internal" || args[1] != "guest-agent" || args[2] != "--config" ||
-		!filepath.IsAbs(args[3]) || filepath.Clean(args[3]) != args[3] {
-		fmt.Fprintln(stderr, "internal guest-agent invocation requires: internal guest-agent --config <canonical-absolute-path>")
+	if len(args) != 4 || args[0] != "internal" {
+		fmt.Fprintln(stderr, "invalid internal EHJINT invocation")
 		return contracts.ExitStatus(contracts.CodeInvalidArgument)
 	}
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
-	if err := guestagent.Run(ctx, args[3]); err != nil {
-		if errors.Is(err, context.Canceled) {
-			return 0
+	switch args[1] {
+	case "guest-agent":
+		if args[2] != "--config" || !filepath.IsAbs(args[3]) || filepath.Clean(args[3]) != args[3] {
+			fmt.Fprintln(stderr, "internal guest-agent invocation requires: internal guest-agent --config <canonical-absolute-path>")
+			return contracts.ExitStatus(contracts.CodeInvalidArgument)
 		}
-		fmt.Fprintf(stderr, "internal guest-agent failed: %v\n", err)
-		return contracts.ExitStatus(contracts.CodeInternal)
+		ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+		defer stop()
+		if err := guestagent.Run(ctx, args[3]); err != nil {
+			if errors.Is(err, context.Canceled) {
+				return 0
+			}
+			fmt.Fprintf(stderr, "internal guest-agent failed: %v\n", err)
+			return contracts.ExitStatus(contracts.CodeInternal)
+		}
+		return 0
+	case "vmm-launch":
+		if args[2] != "--spec-fd" {
+			fmt.Fprintln(stderr, "internal VMM launcher invocation requires: internal vmm-launch --spec-fd <descriptor>")
+			return contracts.ExitStatus(contracts.CodeInvalidArgument)
+		}
+		descriptor, err := vmm.ParseSpecFD(args[3])
+		if err != nil {
+			fmt.Fprintf(stderr, "internal VMM launcher invocation is invalid: %v\n", err)
+			return contracts.ExitStatus(contracts.CodeInvalidArgument)
+		}
+		if err := vmm.RunLauncher(descriptor); err != nil {
+			fmt.Fprintf(stderr, "internal VMM launcher failed: %v\n", err)
+			return contracts.ExitStatus(contracts.CodeInternal)
+		}
+		return 0
+	default:
+		fmt.Fprintln(stderr, "unknown internal EHJINT mode")
+		return contracts.ExitStatus(contracts.CodeInvalidArgument)
 	}
-	return 0
 }
 
 func parseArguments(args []string) (bool, []string, *contracts.ErrorEnvelope) {

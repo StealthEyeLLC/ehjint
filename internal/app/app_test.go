@@ -156,7 +156,26 @@ func TestInternalGuestAgentInvocationFailsClosed(t *testing.T) {
 			var stdout bytes.Buffer
 			var stderr bytes.Buffer
 			code := Run("ehjint", arguments, &stdout, &stderr)
-			if code != contracts.ExitStatus(contracts.CodeInvalidArgument) || stdout.Len() != 0 || !strings.Contains(stderr.String(), "internal guest-agent invocation requires") {
+			if code != contracts.ExitStatus(contracts.CodeInvalidArgument) || stdout.Len() != 0 || stderr.Len() == 0 || stderr.Len() > 1024 {
+				t.Fatalf("code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+			}
+		})
+	}
+}
+
+func TestInternalVMMLauncherInvocationFailsClosed(t *testing.T) {
+	cases := [][]string{
+		{"internal", "vmm-launch", "--spec-fd", "2"},
+		{"internal", "vmm-launch", "--spec-fd", "not-a-number"},
+		{"internal", "vmm-launch", "--wrong", "3"},
+		{"internal", "unknown", "--spec-fd", "3"},
+	}
+	for _, arguments := range cases {
+		t.Run(strings.Join(arguments, "_"), func(t *testing.T) {
+			var stdout bytes.Buffer
+			var stderr bytes.Buffer
+			code := Run("ehjint", arguments, &stdout, &stderr)
+			if code != contracts.ExitStatus(contracts.CodeInvalidArgument) || stdout.Len() != 0 || stderr.Len() == 0 {
 				t.Fatalf("code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 			}
 		})
