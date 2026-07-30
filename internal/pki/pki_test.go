@@ -156,3 +156,21 @@ func handshake(clientConfig, serverConfig *tls.Config) error {
 	}
 	return serverErr
 }
+
+func TestPublicAuthoritySupportsTLSButCannotIssue(t *testing.T) {
+	now := time.Date(2026, 7, 30, 12, 0, 0, 0, time.UTC)
+	authority, err := GenerateAuthority(now, 365*24*time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	public, err := ParseAuthorityCertificate(authority.CertPEM)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if public.Certificate == nil || len(public.PrivateKey) != 0 || len(public.KeyPEM) != 0 {
+		t.Fatal("public authority retained or invented private material")
+	}
+	if _, err := public.IssueMachine("mach_aaaaaaaaaaaaaaaaaaaaaaaaaa", now, 24*time.Hour); err == nil {
+		t.Fatal("public authority issued credentials")
+	}
+}

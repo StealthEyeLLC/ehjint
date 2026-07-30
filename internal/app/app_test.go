@@ -143,3 +143,22 @@ func TestDuplicateJSONFlagRejected(t *testing.T) {
 		t.Fatalf("code=%d stderr=%q", code, stderr.String())
 	}
 }
+
+func TestInternalGuestAgentInvocationFailsClosed(t *testing.T) {
+	cases := [][]string{
+		{"internal"},
+		{"internal", "guest-agent"},
+		{"internal", "guest-agent", "--config", "relative.json"},
+		{"internal", "unknown", "--config", "/etc/ehjint/guest-agent.json"},
+	}
+	for _, arguments := range cases {
+		t.Run(strings.Join(arguments, "_"), func(t *testing.T) {
+			var stdout bytes.Buffer
+			var stderr bytes.Buffer
+			code := Run("ehjint", arguments, &stdout, &stderr)
+			if code != contracts.ExitStatus(contracts.CodeInvalidArgument) || stdout.Len() != 0 || !strings.Contains(stderr.String(), "internal guest-agent invocation requires") {
+				t.Fatalf("code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+			}
+		})
+	}
+}

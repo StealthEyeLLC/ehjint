@@ -103,3 +103,16 @@ func TestRejectsShellShortcutAndUnsafeExecInputs(t *testing.T) {
 		}
 	}
 }
+
+func TestExitAcceptsKernelSignalTruthBeyondControlSubset(t *testing.T) {
+	frame, err := NewFrame(KindExit, "mach_aaaaaaaaaaaaaaaaaaaaaaaaaa", "op_aaaaaaaaaaaaaaaaaaaaaaaaaa", 1, Exit{Status: 139, Signal: "SIGSEGV", CoreDumped: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ValidateFrame(frame); err != nil {
+		t.Fatalf("valid signal exit rejected: %v", err)
+	}
+	if _, err := NewFrame(KindExit, "mach_aaaaaaaaaaaaaaaaaaaaaaaaaa", "op_aaaaaaaaaaaaaaaaaaaaaaaaaa", 1, Exit{Status: 1, Signal: "SIGMADEUP"}); err == nil {
+		t.Fatal("invented exit signal accepted")
+	}
+}

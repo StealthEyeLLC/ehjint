@@ -26,6 +26,7 @@ import (
 const (
 	RoleController = "controller"
 	RoleGuest      = "guest"
+	ALPN           = "ehjint-vsock/1"
 	identityScheme = "spiffe"
 	identityHost   = "ehjint.local"
 )
@@ -100,9 +101,9 @@ func GenerateAuthority(now time.Time, validity time.Duration) (Authority, error)
 	}, nil
 }
 
-// ParseAuthority parses exactly one CA certificate and Ed25519 private key and
-// verifies that they are a matching private CA.
-func ParseAuthority(certPEM, keyPEM []byte) (Authority, error) {
+// ParseAuthorityCertificate parses the public half of one constrained EHJINT
+// CA. Guest machines use this form and never receive the CA private key.
+func ParseAuthorityCertificate(certPEM []byte) (Authority, error) {
 	certificate, err := parseSingleCertificate(certPEM)
 	if err != nil {
 		return Authority{}, err
@@ -110,6 +111,20 @@ func ParseAuthority(certPEM, keyPEM []byte) (Authority, error) {
 	if !certificate.IsCA || !certificate.BasicConstraintsValid || certificate.MaxPathLen != 0 || !certificate.MaxPathLenZero || certificate.KeyUsage&x509.KeyUsageCertSign == 0 {
 		return Authority{}, fmt.Errorf("certificate is not the constrained EHJINT CA shape")
 	}
+	if _, ok := certificate.PublicKey.(ed25519.PublicKey); !ok {
+		return Authority{}, fmt.Errorf("EHJINT CA public key is not Ed25519")
+	}
+	return Authority{Certificate: certificate, CertPEM: append([]byte(nil), certPEM...)}, nil
+}
+
+// ParseAuthority parses exactly one CA certificate and Ed25519 private key and
+// verifies that they are a matching private CA.
+func ParseAuthority(certPEM, keyPEM []byte) (Authority, error) {
+	authority, err := ParseAuthorityCertificate(certPEM)
+	if err != nil {
+		return Authority{}, err
+	}
+	certificate := authority.Certificate
 	privateKey, err := parseEd25519PrivateKey(keyPEM)
 	if err != nil {
 		return Authority{}, err
@@ -118,7 +133,9 @@ func ParseAuthority(certPEM, keyPEM []byte) (Authority, error) {
 	if !ok || !publicKey.Equal(privateKey.Public()) {
 		return Authority{}, fmt.Errorf("controller CA certificate and key do not match")
 	}
-	return Authority{Certificate: certificate, PrivateKey: privateKey, CertPEM: append([]byte(nil), certPEM...), KeyPEM: append([]byte(nil), keyPEM...)}, nil
+	authority.PrivateKey = privateKey
+	authority.KeyPEM = append([]byte(nil), keyPEM...)
+	return authority, nil
 }
 
 // IssueMachine creates separate controller-client and guest-server credentials
@@ -237,12 +254,16 @@ func ClientTLSConfig(machineID string, authority Authority, controller Credentia
 	config := &tls.Config{
 		MinVersion:             tls.VersionTLS13,
 		MaxVersion:             tls.VersionTLS13,
+		NextProtos:             []string{ALPN},
 		Certificates:           []tls.Certificate{controller.TLS},
 		RootCAs:                roots,
 		InsecureSkipVerify:     true, // Replaced by the complete chain+URI verification below; there is no DNS name on AF_VSOCK.
 		SessionTicketsDisabled: true,
 		Time:                   clock,
 		VerifyConnection: func(state tls.ConnectionState) error {
+			if state.NegotiatedProtocol != ALPN {
+				return fmt.Errorf("TLS ALPN mismatch: expected %s", ALPN)
+			}
 			if len(state.PeerCertificates) == 0 {
 				return fmt.Errorf("guest presented no certificate")
 			}
@@ -268,12 +289,16 @@ func ServerTLSConfig(machineID string, authority Authority, guest Credentials, c
 	config := &tls.Config{
 		MinVersion:             tls.VersionTLS13,
 		MaxVersion:             tls.VersionTLS13,
+		NextProtos:             []string{ALPN},
 		Certificates:           []tls.Certificate{guest.TLS},
 		ClientCAs:              roots,
 		ClientAuth:             tls.RequireAndVerifyClientCert,
 		SessionTicketsDisabled: true,
 		Time:                   clock,
 		VerifyConnection: func(state tls.ConnectionState) error {
+			if state.NegotiatedProtocol != ALPN {
+				return fmt.Errorf("TLS ALPN mismatch: expected %s", ALPN)
+			}
 			if len(state.PeerCertificates) == 0 {
 				return fmt.Errorf("controller presented no certificate")
 			}

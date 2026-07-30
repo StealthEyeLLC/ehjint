@@ -2,18 +2,26 @@
 package app
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"github.com/StealthEyeLLC/ehjint/internal/contracts"
+	"github.com/StealthEyeLLC/ehjint/internal/guestagent"
 	"github.com/StealthEyeLLC/ehjint/internal/registry"
 )
 
 // Run executes one EHJINT invocation and returns its stable process exit status.
 func Run(argv0 string, args []string, stdout, stderr io.Writer) int {
+	if len(args) > 0 && args[0] == "internal" {
+		return runInternal(args, stderr)
+	}
 	invocation := filepath.Base(argv0)
 	jsonOutput, operands, publicError := parseArguments(args)
 	if publicError != nil {
@@ -61,6 +69,24 @@ func Run(argv0 string, args []string, stdout, stderr io.Writer) int {
 	}
 	if diagnostic, ok := result.(DiagnosticResult); ok && !diagnostic.Healthy {
 		return contracts.ExitStatus(contracts.CodeFailedPrecondition)
+	}
+	return 0
+}
+
+func runInternal(args []string, stderr io.Writer) int {
+	if len(args) != 4 || args[0] != "internal" || args[1] != "guest-agent" || args[2] != "--config" ||
+		!filepath.IsAbs(args[3]) || filepath.Clean(args[3]) != args[3] {
+		fmt.Fprintln(stderr, "internal guest-agent invocation requires: internal guest-agent --config <canonical-absolute-path>")
+		return contracts.ExitStatus(contracts.CodeInvalidArgument)
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	if err := guestagent.Run(ctx, args[3]); err != nil {
+		if errors.Is(err, context.Canceled) {
+			return 0
+		}
+		fmt.Fprintf(stderr, "internal guest-agent failed: %v\n", err)
+		return contracts.ExitStatus(contracts.CodeInternal)
 	}
 	return 0
 }

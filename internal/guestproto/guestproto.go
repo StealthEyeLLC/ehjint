@@ -285,7 +285,7 @@ func ValidateFrame(frame Frame) error {
 	case KindExit:
 		operationRequired, sequenceRequired = true, true
 		var value Exit
-		if err := DecodePayload(frame, &value); err != nil || value.Status < 0 || value.Status > 255 || (value.Signal != "" && !validSignal(value.Signal)) {
+		if err := DecodePayload(frame, &value); err != nil || value.Status < 0 || value.Status > 255 || (value.Signal != "" && !validExitSignal(value.Signal)) {
 			return fmt.Errorf("invalid exit payload")
 		}
 	case KindError:
@@ -409,6 +409,15 @@ func validateGuestPath(value string) error {
 func validSignal(value string) bool {
 	switch value {
 	case "SIGHUP", "SIGINT", "SIGQUIT", "SIGTERM", "SIGKILL", "SIGUSR1", "SIGUSR2", "SIGWINCH":
+		return true
+	default:
+		return false
+	}
+}
+
+func validExitSignal(value string) bool {
+	switch value {
+	case "SIGHUP", "SIGINT", "SIGQUIT", "SIGILL", "SIGTRAP", "SIGABRT", "SIGBUS", "SIGFPE", "SIGKILL", "SIGUSR1", "SIGSEGV", "SIGUSR2", "SIGPIPE", "SIGALRM", "SIGTERM", "SIGCHLD", "SIGCONT", "SIGSTOP", "SIGTSTP", "SIGTTIN", "SIGTTOU", "SIGURG", "SIGXCPU", "SIGXFSZ", "SIGVTALRM", "SIGPROF", "SIGWINCH", "SIGIO", "SIGSYS":
 		return true
 	default:
 		return false
