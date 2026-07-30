@@ -16,7 +16,7 @@ func TestSensitiveContentDetection(t *testing.T) {
 		"fine-grained PAT": "github_" + "pat_abcdefghijklmnopqrstuvwxyz",
 		"credential URL":   "https://" + "user:password@" + "example.invalid/path",
 		"AWS access key":   "AKIA" + "ABCDEFGHIJKLMNOP",
-		"private path":     "/" + "var/lib/example",
+		"private path":     "/" + "var/lib/" + "baby" + "-quirt/example",
 		"private executor": "baby" + "-quirt",
 	}
 	for name, content := range cases {
@@ -28,6 +28,29 @@ func TestSensitiveContentDetection(t *testing.T) {
 	}
 	if findings := scanSensitive("safe.txt", []byte("official public source and digest only\n")); len(findings) != 0 {
 		t.Fatalf("safe content produced findings: %+v", findings)
+	}
+}
+
+func TestDeclaredEHJINTManagedPathsAreNotPrivateExecutorLeakage(t *testing.T) {
+	for _, value := range []string{"/var/lib/ehjint", "/run/ehjint", "/opt/ehjint"} {
+		for _, finding := range scanSensitive("safe.txt", []byte(value)) {
+			if finding.Check == "private_execution_leakage" {
+				t.Fatalf("declared EHJINT path %q was rejected: %+v", value, finding)
+			}
+		}
+	}
+}
+
+func TestEvidenceShapeAllowsExactMissionResults(t *testing.T) {
+	files := []string{"evidence/mission-1/RESULT.md", "evidence/mission-2/RESULT.md"}
+	if findings := checkEvidenceShape(files); len(findings) != 0 {
+		t.Fatalf("exact evidence shape rejected: %+v", findings)
+	}
+	if findings := checkEvidenceShape([]string{"evidence/mission-2/RESULT.md"}); len(findings) == 0 {
+		t.Fatal("Mission 2 evidence without preserved Mission 1 evidence was accepted")
+	}
+	if findings := checkEvidenceShape(append(files, "evidence/mission-2/extra.txt")); len(findings) == 0 {
+		t.Fatal("extra evidence file was accepted")
 	}
 }
 

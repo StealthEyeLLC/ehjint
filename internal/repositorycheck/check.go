@@ -1,9 +1,11 @@
-// Package repositorycheck enforces deterministic, standalone Mission 1
-// repository policy without relying on a private service or network lookup.
+// Package repositorycheck enforces deterministic EHJINT repository policy
+// without relying on a private service or network lookup.
 package repositorycheck
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 	"go/parser"
 	"go/token"
@@ -94,7 +96,7 @@ func Check(root string) (Report, error) {
 			"tracked_binaries",
 			"secret_patterns",
 			"private_execution_leakage",
-			"standalone_go_imports",
+			"locked_go_imports",
 			"dependency_locks",
 			"immutable_ci_actions",
 			"minimal_ci_authority",
@@ -143,6 +145,7 @@ func checkRequiredFiles(files []string) []Finding {
 		"config/toolchain.lock.json",
 		"docs/MISSION-1.md",
 		"go.mod",
+		"go.sum",
 		"registry/operations.json",
 		"scripts/bootstrap-tools.sh",
 		"scripts/build.sh",
@@ -159,7 +162,7 @@ func checkRequiredFiles(files []string) []Finding {
 	findings := make([]Finding, 0)
 	for _, path := range required {
 		if !present[path] {
-			findings = append(findings, Finding{Check: "required_files", Path: path, Message: "required Mission 1 file is missing"})
+			findings = append(findings, Finding{Check: "required_files", Path: path, Message: "required repository file is missing"})
 		}
 	}
 	return findings
@@ -223,7 +226,8 @@ func scanSensitive(path string, content []byte) []Finding {
 		{"secret_patterns", "Slack token prefix", "xo" + "xp-"},
 		{"private_execution_leakage", "private executor product", "baby" + "-quirt"},
 		{"private_execution_leakage", "private executor operation", "call_" + "quirt"},
-		{"private_execution_leakage", "private host state path", "/" + "var/lib/"},
+		{"private_execution_leakage", "private executor state path", "/" + "var/lib/" + "baby" + "-quirt"},
+		{"private_execution_leakage", "private executor runtime path", "/" + "run/" + "baby" + "-quirt"},
 		{"private_execution_leakage", "private installed executor path", "/" + "opt/baby"},
 		{"private_execution_leakage", "interactive private terminal product", "Ter" + "mius"},
 	}
@@ -243,18 +247,63 @@ func scanSensitive(path string, content []byte) []Finding {
 }
 
 func checkGoModuleAndImports(root string, files []string) []Finding {
+	const check = "locked_go_imports"
 	findings := make([]Finding, 0)
-	goModPath := filepath.Join(root, "go.mod")
-	goMod, err := os.ReadFile(goModPath)
+	dependencyData, err := os.ReadFile(filepath.Join(root, "config", "dependencies.lock.json"))
 	if err != nil {
-		return append(findings, Finding{Check: "standalone_go_imports", Path: "go.mod", Message: "cannot read go.mod: " + err.Error()})
+		return append(findings, Finding{Check: check, Path: "config/dependencies.lock.json", Message: "cannot read dependency lock: " + err.Error()})
 	}
-	lines := strings.Split(string(goMod), "\n")
+	dependencies, err := contracts.ParseDependencyLock(dependencyData)
+	if err != nil {
+		return append(findings, Finding{Check: check, Path: "config/dependencies.lock.json", Message: "cannot parse dependency lock: " + err.Error()})
+	}
+	locked := make(map[string]string)
+	for _, dependency := range dependencies.Dependencies {
+		if strings.HasPrefix(dependency.Source, "https://proxy.golang.org/") && strings.Contains(strings.Split(dependency.Name, "/")[0], ".") {
+			locked[dependency.Name] = dependency.Version
+		}
+	}
+
+	goMod, err := os.ReadFile(filepath.Join(root, "go.mod"))
+	if err != nil {
+		return append(findings, Finding{Check: check, Path: "go.mod", Message: "cannot read go.mod: " + err.Error()})
+	}
+	requirements := make(map[string]string)
 	moduleSeen := false
 	goSeen := false
-	for _, raw := range lines {
+	inRequireBlock := false
+	parseRequirement := func(line string) {
+		fields := strings.Fields(line)
+		if len(fields) != 2 {
+			findings = append(findings, Finding{Check: check, Path: "go.mod", Message: "require directive must contain exactly module and version: " + strconv.Quote(line)})
+			return
+		}
+		module, version := fields[0], fields[1]
+		if _, exists := requirements[module]; exists {
+			findings = append(findings, Finding{Check: check, Path: "go.mod", Message: "duplicate module requirement " + strconv.Quote(module)})
+			return
+		}
+		requirements[module] = version
+		lockedVersion, exists := locked[module]
+		if !exists {
+			findings = append(findings, Finding{Check: check, Path: "go.mod", Message: "module is not present in the dependency lock: " + module})
+			return
+		}
+		if version != lockedVersion {
+			findings = append(findings, Finding{Check: check, Path: "go.mod", Message: fmt.Sprintf("module %s version %s differs from locked version %s", module, version, lockedVersion)})
+		}
+	}
+	for _, raw := range strings.Split(string(goMod), "\n") {
 		line := strings.TrimSpace(raw)
 		if line == "" || strings.HasPrefix(line, "//") {
+			continue
+		}
+		if inRequireBlock {
+			if line == ")" {
+				inRequireBlock = false
+				continue
+			}
+			parseRequirement(line)
 			continue
 		}
 		switch {
@@ -262,40 +311,119 @@ func checkGoModuleAndImports(root string, files []string) []Finding {
 			moduleSeen = true
 		case line == "go 1.26.0":
 			goSeen = true
-		case strings.HasPrefix(line, "require"), strings.HasPrefix(line, "replace"), strings.HasPrefix(line, "exclude"), strings.HasPrefix(line, "toolchain"):
-			findings = append(findings, Finding{Check: "standalone_go_imports", Path: "go.mod", Message: "external module/toolchain directives are forbidden in Mission 1"})
+		case line == "require (":
+			inRequireBlock = true
+		case strings.HasPrefix(line, "require "):
+			parseRequirement(strings.TrimSpace(strings.TrimPrefix(line, "require ")))
+		case strings.HasPrefix(line, "replace "), strings.HasPrefix(line, "exclude "), strings.HasPrefix(line, "toolchain "):
+			findings = append(findings, Finding{Check: check, Path: "go.mod", Message: "replace, exclude, and toolchain directives are forbidden; use exact dependency and toolchain locks"})
 		default:
-			findings = append(findings, Finding{Check: "standalone_go_imports", Path: "go.mod", Message: "unexpected directive " + strconv.Quote(line)})
+			findings = append(findings, Finding{Check: check, Path: "go.mod", Message: "unexpected directive " + strconv.Quote(line)})
 		}
 	}
-	if !moduleSeen || !goSeen {
-		findings = append(findings, Finding{Check: "standalone_go_imports", Path: "go.mod", Message: "module path or exact Go language version is missing"})
+	if inRequireBlock {
+		findings = append(findings, Finding{Check: check, Path: "go.mod", Message: "unterminated require block"})
 	}
+	if !moduleSeen || !goSeen {
+		findings = append(findings, Finding{Check: check, Path: "go.mod", Message: "module path or exact Go language version is missing"})
+	}
+
+	goSumPresent := false
 	for _, relative := range files {
 		if relative == "go.sum" {
-			findings = append(findings, Finding{Check: "standalone_go_imports", Path: relative, Message: "go.sum is unexpected because Mission 1 has no external Go modules"})
+			goSumPresent = true
 		}
 		if !strings.HasSuffix(relative, ".go") {
 			continue
 		}
-		file, err := parser.ParseFile(token.NewFileSet(), filepath.Join(root, filepath.FromSlash(relative)), nil, parser.ImportsOnly)
-		if err != nil {
-			findings = append(findings, Finding{Check: "standalone_go_imports", Path: relative, Message: "cannot parse Go imports: " + err.Error()})
+		file, parseErr := parser.ParseFile(token.NewFileSet(), filepath.Join(root, filepath.FromSlash(relative)), nil, parser.ImportsOnly)
+		if parseErr != nil {
+			findings = append(findings, Finding{Check: check, Path: relative, Message: "cannot parse Go imports: " + parseErr.Error()})
 			continue
 		}
 		for _, specification := range file.Imports {
-			importPath, err := strconv.Unquote(specification.Path.Value)
-			if err != nil {
-				findings = append(findings, Finding{Check: "standalone_go_imports", Path: relative, Message: "invalid import literal"})
+			importPath, unquoteErr := strconv.Unquote(specification.Path.Value)
+			if unquoteErr != nil {
+				findings = append(findings, Finding{Check: check, Path: relative, Message: "invalid import literal"})
 				continue
 			}
 			if importPath == "C" {
-				findings = append(findings, Finding{Check: "standalone_go_imports", Path: relative, Message: "cgo imports are forbidden"})
+				findings = append(findings, Finding{Check: check, Path: relative, Message: "direct cgo imports are forbidden outside locked dependencies"})
 				continue
 			}
 			first := strings.Split(importPath, "/")[0]
-			if strings.Contains(first, ".") && importPath != modulePath && !strings.HasPrefix(importPath, modulePath+"/") {
-				findings = append(findings, Finding{Check: "standalone_go_imports", Path: relative, Message: "external Go import " + strconv.Quote(importPath) + " is not locked or permitted"})
+			if !strings.Contains(first, ".") || importPath == modulePath || strings.HasPrefix(importPath, modulePath+"/") {
+				continue
+			}
+			matched := false
+			for module := range requirements {
+				if importPath == module || strings.HasPrefix(importPath, module+"/") {
+					matched = true
+					break
+				}
+			}
+			if !matched {
+				findings = append(findings, Finding{Check: check, Path: relative, Message: "external Go import " + strconv.Quote(importPath) + " is not an exact locked requirement"})
+			}
+		}
+	}
+	if len(requirements) != 0 && !goSumPresent {
+		findings = append(findings, Finding{Check: check, Path: "go.sum", Message: "go.sum is required for locked Go modules"})
+	}
+	if len(requirements) == 0 && goSumPresent {
+		findings = append(findings, Finding{Check: check, Path: "go.sum", Message: "go.sum is unexpected without Go module requirements"})
+	}
+	if goSumPresent {
+		findings = append(findings, checkGoSum(root, requirements)...)
+	}
+	return findings
+}
+
+func checkGoSum(root string, requirements map[string]string) []Finding {
+	const check = "locked_go_imports"
+	data, err := os.ReadFile(filepath.Join(root, "go.sum"))
+	if err != nil {
+		return []Finding{{Check: check, Path: "go.sum", Message: "cannot read go.sum: " + err.Error()}}
+	}
+	seen := make(map[string]bool)
+	findings := make([]Finding, 0)
+	for lineNumber, raw := range strings.Split(string(data), "\n") {
+		line := strings.TrimSpace(raw)
+		if line == "" {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) != 3 {
+			findings = append(findings, Finding{Check: check, Path: "go.sum", Message: fmt.Sprintf("line %d must contain exactly module, version, and sum", lineNumber+1)})
+			continue
+		}
+		module, version, sum := fields[0], fields[1], fields[2]
+		lockedVersion, exists := requirements[module]
+		if !exists {
+			findings = append(findings, Finding{Check: check, Path: "go.sum", Message: "sum exists for an undeclared module: " + module})
+			continue
+		}
+		if version != lockedVersion && version != lockedVersion+"/go.mod" {
+			findings = append(findings, Finding{Check: check, Path: "go.sum", Message: fmt.Sprintf("sum version %s for %s differs from required version %s", version, module, lockedVersion)})
+			continue
+		}
+		encoded := strings.TrimPrefix(sum, "h1:")
+		decoded, decodeErr := base64.StdEncoding.DecodeString(encoded)
+		if !strings.HasPrefix(sum, "h1:") || decodeErr != nil || len(decoded) != sha256.Size {
+			findings = append(findings, Finding{Check: check, Path: "go.sum", Message: fmt.Sprintf("line %d has an invalid h1 module sum", lineNumber+1)})
+			continue
+		}
+		key := module + " " + version
+		if seen[key] {
+			findings = append(findings, Finding{Check: check, Path: "go.sum", Message: "duplicate sum entry: " + key})
+			continue
+		}
+		seen[key] = true
+	}
+	for module, version := range requirements {
+		for _, required := range []string{module + " " + version, module + " " + version + "/go.mod"} {
+			if !seen[required] {
+				findings = append(findings, Finding{Check: check, Path: "go.sum", Message: "missing exact sum entry: " + required})
 			}
 		}
 	}
@@ -405,24 +533,29 @@ func checkRuntimeShape(files []string) []Finding {
 		}
 	}
 	if len(commands) != 1 || commands[0] != "cmd/ehjint/main.go" {
-		findings = append(findings, Finding{Check: "single_runtime_entrypoint", Path: "cmd", Message: "Mission 1 must contain exactly cmd/ehjint/main.go as the runtime entrypoint"})
+		findings = append(findings, Finding{Check: "single_runtime_entrypoint", Path: "cmd", Message: "EHJINT must contain exactly cmd/ehjint/main.go as the runtime entrypoint"})
 	}
 	return findings
 }
 
 func checkEvidenceShape(files []string) []Finding {
+	allowed := map[string]bool{
+		"evidence/mission-1/RESULT.md": true,
+		"evidence/mission-2/RESULT.md": true,
+	}
+	seen := make(map[string]bool)
 	findings := make([]Finding, 0)
-	evidence := make([]string, 0)
 	for _, path := range files {
-		if strings.HasPrefix(path, "evidence/") {
-			evidence = append(evidence, path)
+		if !strings.HasPrefix(path, "evidence/") {
+			continue
+		}
+		seen[path] = true
+		if !allowed[path] {
+			findings = append(findings, Finding{Check: "evidence_shape", Path: path, Message: "only the exact Mission 1 and Mission 2 RESULT.md evidence files are permitted"})
 		}
 	}
-	if len(evidence) == 0 {
-		return findings
-	}
-	if len(evidence) != 1 || evidence[0] != "evidence/mission-1/RESULT.md" {
-		findings = append(findings, Finding{Check: "evidence_shape", Path: "evidence", Message: "when present, Mission 1 evidence must consist only of evidence/mission-1/RESULT.md"})
+	if len(seen) != 0 && !seen["evidence/mission-1/RESULT.md"] {
+		findings = append(findings, Finding{Check: "evidence_shape", Path: "evidence/mission-1/RESULT.md", Message: "Mission 1 evidence must remain present when repository evidence exists"})
 	}
 	return findings
 }

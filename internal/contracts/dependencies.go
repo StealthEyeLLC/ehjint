@@ -11,7 +11,7 @@ import (
 
 var dependencyDigestPattern = regexp.MustCompile(`^(sha256:[0-9a-f]{64}|git:[0-9a-f]{40})$`)
 
-// DependencyLock is the complete strict lock for dependencies actually used by Mission 1.
+// DependencyLock is the complete strict lock for dependencies actually used by EHJINT.
 type DependencyLock struct {
 	SchemaVersion int          `json:"schema_version"`
 	Dependencies  []Dependency `json:"dependencies"`

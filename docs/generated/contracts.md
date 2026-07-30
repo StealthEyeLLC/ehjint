@@ -39,4 +39,6 @@ Provider entries define future data and lifecycle boundaries only. Mission 1 doe
 | Name | Version | Scope | Digest | License | Distributed |
 |---|---|---|---|---|---|
 | `actions/checkout` | `v4.2.2` | `ci` | `git:11bd71901bbe5b1630ceea73d27597364c9af683` | `MIT` | `false` |
+| `github.com/mattn/go-sqlite3` | `v1.14.49` | `runtime` | `sha256:54cc6e644780ed238d1d39456f5bf238c79159a345356e6837d31884cf018ce1` | `MIT` | `true` |
 | `go` | `go1.26.5` | `build_test` | `sha256:5c2c3b16caefa1d968a94c1daca04a7ca301a496d9b086e17ad77bb81393f053` | `BSD-3-Clause` | `false` |
+| `golang.org/x/sys` | `v0.47.0` | `runtime` | `sha256:cdac013ddced0262926ec29ffcda645da39670e61c7e5b761e572b6b1809bb1b` | `BSD-3-Clause` | `true` |

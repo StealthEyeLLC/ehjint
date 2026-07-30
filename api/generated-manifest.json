@@ -105,7 +105,7 @@
     },
     {
       "path": "docs/generated/contracts.md",
-      "sha256": "fd80bfdd4f601386fe43b46de33f887081e68bd08f5e28d309a5a9114321b71d"
+      "sha256": "30457af8f75f88360498f7cfc0db35e1ea5114c431b2a503ca4b14d51ac8311f"
     },
     {
       "path": "docs/generated/operations.md",
@@ -113,7 +113,7 @@
     },
     {
       "path": "internal/foundation/zz_generated_data.go",
-      "sha256": "20d345da3fefb6b6aaee6329dddffd0a63a440bb83a2ca63c43112ceadb97662"
+      "sha256": "d387534faaf8408cc5fa69fbe83dab0697f890e66cf23778ed0cd8c68566c186"
     },
     {
       "path": "internal/registry/zz_generated_catalog.go",
