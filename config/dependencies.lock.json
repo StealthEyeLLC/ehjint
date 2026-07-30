@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "dependencies": [
+    {
+      "name": "actions/checkout",
+      "purpose": "Fetch the exact repository revision in the minimal GitHub Actions workflow.",
+      "version": "v4.2.2",
+      "source": "https://github.com/actions/checkout",
+      "digest": "git:11bd71901bbe5b1630ceea73d27597364c9af683",
+      "license": "MIT",
+      "license_source": "https://github.com/actions/checkout/blob/11bd71901bbe5b1630ceea73d27597364c9af683/LICENSE",
+      "scope": "ci",
+      "distributed": false,
+      "target_platforms": ["github-actions/linux"],
+      "verification": "The workflow uses the complete immutable commit SHA."
+    },
+    {
+      "name": "go",
+      "purpose": "Compile, format, vet, test, race-test, generate, and check the EHJINT foundation.",
+      "version": "go1.26.5",
+      "source": "https://go.dev/dl/go1.26.5.linux-amd64.tar.gz",
+      "digest": "sha256:5c2c3b16caefa1d968a94c1daca04a7ca301a496d9b086e17ad77bb81393f053",
+      "license": "BSD-3-Clause",
+      "license_source": "https://go.dev/LICENSE",
+      "scope": "build_test",
+      "distributed": false,
+      "target_platforms": ["linux/amd64"],
+      "verification": "The bootstrap script verifies the official archive SHA-256 before extraction."
+    }
+  ]
+}

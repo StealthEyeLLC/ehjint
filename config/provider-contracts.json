@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "contracts": [
+    {
+      "kind": "browser_pack",
+      "version": 1,
+      "capabilities": ["artifact_observation", "guest_owned_execution", "persistent_profile", "rollback_or_discard"],
+      "lifecycle": ["plan", "prepare", "activate", "observe", "rollback", "cleanup"],
+      "ownership": "owned_resources_only",
+      "failure_truth": "explicit",
+      "implementation_state": "contract_only"
+    },
+    {
+      "kind": "device",
+      "version": 1,
+      "capabilities": ["capability_discovery", "conflict_reporting", "ownership_restore", "topology_binding"],
+      "lifecycle": ["plan", "prepare", "attach", "observe", "detach", "cleanup"],
+      "ownership": "owned_resources_only",
+      "failure_truth": "explicit",
+      "implementation_state": "contract_only"
+    },
+    {
+      "kind": "guest_image",
+      "version": 1,
+      "capabilities": ["component_identity", "digest_verification", "guest_agent_compatibility", "immutable_base"],
+      "lifecycle": ["resolve", "verify", "prepare", "observe", "discard"],
+      "ownership": "owned_resources_only",
+      "failure_truth": "explicit",
+      "implementation_state": "contract_only"
+    },
+    {
+      "kind": "network",
+      "version": 1,
+      "capabilities": ["outbound_connectivity", "owned_cleanup", "port_binding", "topology_binding"],
+      "lifecycle": ["plan", "prepare", "activate", "observe", "deactivate", "cleanup"],
+      "ownership": "owned_resources_only",
+      "failure_truth": "explicit",
+      "implementation_state": "contract_only"
+    },
+    {
+      "kind": "protocol_edge",
+      "version": 1,
+      "capabilities": ["canonical_operation_mapping", "request_bounds", "response_mapping", "transport_independence"],
+      "lifecycle": ["validate", "translate", "dispatch", "observe", "close"],
+      "ownership": "owned_resources_only",
+      "failure_truth": "explicit",
+      "implementation_state": "contract_only"
+    },
+    {
+      "kind": "storage",
+      "version": 1,
+      "capabilities": ["explicit_disk_format", "immutable_base", "managed_overlay", "sparse_preservation"],
+      "lifecycle": ["plan", "prepare", "attach", "observe", "detach", "cleanup"],
+      "ownership": "owned_resources_only",
+      "failure_truth": "explicit",
+      "implementation_state": "contract_only"
+    },
+    {
+      "kind": "vmm",
+      "version": 1,
+      "capabilities": ["descriptor_inputs", "exact_component_binding", "machine_lifecycle", "readiness_observation"],
+      "lifecycle": ["plan", "prepare", "launch", "observe", "stop", "cleanup"],
+      "ownership": "owned_resources_only",
+      "failure_truth": "explicit",
+      "implementation_state": "contract_only"
+    },
+    {
+      "kind": "workspace",
+      "version": 1,
+      "capabilities": ["contained_mode", "direct_authority", "fork_lineage", "owned_cleanup"],
+      "lifecycle": ["plan", "prepare", "attach", "observe", "detach", "cleanup"],
+      "ownership": "owned_resources_only",
+      "failure_truth": "explicit",
+      "implementation_state": "contract_only"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "contracts": [
+    {"name": "dependency_lock", "version": 1},
+    {"name": "error_envelope", "version": 1},
+    {"name": "idempotency", "version": 1},
+    {"name": "input_output_schema", "version": 1},
+    {"name": "machine_manifest", "version": 1},
+    {"name": "operation_catalog", "version": 1},
+    {"name": "operation_registry_source", "version": 1},
+    {"name": "provider_contract", "version": 1},
+    {"name": "release_manifest", "version": 1},
+    {"name": "result_envelope", "version": 1}
+  ]
+}

@@ -33,3 +33,6 @@
 .idea/
 .DS_Store
 Thumbs.db
+
+# Local deterministic build output
+/build/
