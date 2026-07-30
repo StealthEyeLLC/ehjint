@@ -84,7 +84,7 @@ func errorEnvelopeSchema() map[string]any {
 				"type": "string",
 				"enum": []string{
 					"invalid_argument", "unknown_operation", "unsupported_version", "schema_mismatch",
-					"conflict", "idempotency_conflict", "not_found", "failed_precondition",
+					"conflict", "idempotency_conflict", "not_found", "permission_denied", "failed_precondition",
 					"unavailable", "timeout", "cancelled", "internal",
 				},
 			},

@@ -41,7 +41,7 @@
     },
     {
       "path": "api/schemas/contracts/error-envelope.schema.json",
-      "sha256": "b602e27b85b0675db0c17b7c4459d55d064b7158e1043c9e90bedad55c1e7785"
+      "sha256": "b15daeae288772c53a18accb879f7d5874ff8806af2a5c8dd5250a500586dbc0"
     },
     {
       "path": "api/schemas/contracts/idempotency-record.schema.json",

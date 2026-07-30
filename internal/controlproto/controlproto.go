@@ -19,9 +19,8 @@ const (
 )
 
 var (
-	requestIDPattern   = regexp.MustCompile(`^request-[a-z0-9][a-z0-9-]{5,119}$`)
-	operationPattern   = regexp.MustCompile(`^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$`)
-	operationIDPattern = regexp.MustCompile(`^operation-[a-z0-9][a-z0-9-]{5,117}$`)
+	requestIDPattern = regexp.MustCompile(`^request-[a-z0-9][a-z0-9-]{5,119}$`)
+	operationPattern = regexp.MustCompile(`^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$`)
 )
 
 // Request is one controller operation. Input remains strict operation-specific
@@ -32,6 +31,8 @@ type Request struct {
 	Operation        string          `json:"operation"`
 	OperationVersion int             `json:"operation_version"`
 	IdempotencyKey   string          `json:"idempotency_key,omitempty"`
+	Invocation       string          `json:"invocation,omitempty"`
+	TimeoutMillis    int64           `json:"timeout_millis,omitempty"`
 	Input            json.RawMessage `json:"input"`
 }
 
@@ -68,6 +69,12 @@ func ValidateRequest(request Request) error {
 	if len(request.IdempotencyKey) > 256 || strings.ContainsRune(request.IdempotencyKey, '\x00') {
 		return fmt.Errorf("invalid idempotency key")
 	}
+	if len(request.Invocation) > 4096 || strings.ContainsRune(request.Invocation, '\x00') {
+		return fmt.Errorf("invalid invocation")
+	}
+	if request.TimeoutMillis < 0 || request.TimeoutMillis > 24*60*60*1000 {
+		return fmt.Errorf("invalid request timeout")
+	}
 	if len(request.Input) == 0 || len(request.Input) > MaxFrame/2 {
 		return fmt.Errorf("input is empty or exceeds bound")
 	}
@@ -94,8 +101,9 @@ func Digest(request Request) (string, error) {
 	identity := struct {
 		Operation        string          `json:"operation"`
 		OperationVersion int             `json:"operation_version"`
+		TimeoutMillis    int64           `json:"timeout_millis,omitempty"`
 		Input            json.RawMessage `json:"input"`
-	}{request.Operation, request.OperationVersion, canonicalInput}
+	}{request.Operation, request.OperationVersion, request.TimeoutMillis, canonicalInput}
 	encoded, err := json.Marshal(identity)
 	if err != nil {
 		return "", fmt.Errorf("encode controller request identity: %w", err)
@@ -109,8 +117,10 @@ func ValidateResponse(response Response) error {
 	if response.ProtocolVersion != Version || !requestIDPattern.MatchString(response.RequestID) {
 		return fmt.Errorf("invalid controller response protocol or request ID")
 	}
-	if response.OperationID != "" && !operationIDPattern.MatchString(response.OperationID) {
-		return fmt.Errorf("invalid operation ID")
+	if response.OperationID != "" {
+		if _, err := contracts.ParseIdentifier(contracts.OperationIDKind, response.OperationID); err != nil {
+			return fmt.Errorf("invalid operation ID: %w", err)
+		}
 	}
 	if len(response.Data) > MaxStreamPayload {
 		return fmt.Errorf("stream payload exceeds bound")

@@ -61,11 +61,11 @@ func TestResponseValidation(t *testing.T) {
 	exit := 37
 	publicError := &contracts.ErrorEnvelope{SchemaVersion: 1, Code: contracts.CodeCancelled, Message: "cancelled", Operation: "exec.run", Retryable: false}
 	valid := []Response{
-		{ProtocolVersion: Version, RequestID: "request-abcdef01", Kind: "accepted", OperationID: "operation-abcdef01"},
-		{ProtocolVersion: Version, RequestID: "request-abcdef01", Kind: "stream", OperationID: "operation-abcdef01", Sequence: 1, Stream: "stdout", Data: []byte("hello")},
+		{ProtocolVersion: Version, RequestID: "request-abcdef01", Kind: "accepted", OperationID: "op_aebagbafaydqqcikbmga2dqpca"},
+		{ProtocolVersion: Version, RequestID: "request-abcdef01", Kind: "stream", OperationID: "op_aebagbafaydqqcikbmga2dqpca", Sequence: 1, Stream: "stdout", Data: []byte("hello")},
 		{ProtocolVersion: Version, RequestID: "request-abcdef01", Kind: "result", Result: json.RawMessage(`{"ok":true}`)},
 		{ProtocolVersion: Version, RequestID: "request-abcdef01", Kind: "error", Error: publicError},
-		{ProtocolVersion: Version, RequestID: "request-abcdef01", Kind: "end", OperationID: "operation-abcdef01", ExitStatus: &exit},
+		{ProtocolVersion: Version, RequestID: "request-abcdef01", Kind: "end", OperationID: "op_aebagbafaydqqcikbmga2dqpca", ExitStatus: &exit},
 	}
 	for index, response := range valid {
 		if err := ValidateResponse(response); err != nil {

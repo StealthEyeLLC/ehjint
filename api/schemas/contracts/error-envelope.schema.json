@@ -13,6 +13,7 @@
         "conflict",
         "idempotency_conflict",
         "not_found",
+        "permission_denied",
         "failed_precondition",
         "unavailable",
         "timeout",

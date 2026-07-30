@@ -17,6 +17,7 @@ const (
 	CodeConflict            ErrorCode = "conflict"
 	CodeIdempotencyConflict ErrorCode = "idempotency_conflict"
 	CodeNotFound            ErrorCode = "not_found"
+	CodePermissionDenied    ErrorCode = "permission_denied"
 	CodeFailedPrecondition  ErrorCode = "failed_precondition"
 	CodeUnavailable         ErrorCode = "unavailable"
 	CodeTimeout             ErrorCode = "timeout"
@@ -27,7 +28,7 @@ const (
 var validErrorCodes = map[ErrorCode]bool{
 	CodeInvalidArgument: true, CodeUnknownOperation: true, CodeUnsupportedVersion: true,
 	CodeSchemaMismatch: true, CodeConflict: true, CodeIdempotencyConflict: true,
-	CodeNotFound: true, CodeFailedPrecondition: true, CodeUnavailable: true,
+	CodeNotFound: true, CodePermissionDenied: true, CodeFailedPrecondition: true, CodeUnavailable: true,
 	CodeTimeout: true, CodeCancelled: true, CodeInternal: true,
 }
 
@@ -142,6 +143,8 @@ func ExitStatus(code ErrorCode) int {
 		return 6
 	case CodeNotFound:
 		return 7
+	case CodePermissionDenied:
+		return 13
 	case CodeUnavailable:
 		return 8
 	case CodeTimeout:
