@@ -2,7 +2,7 @@
 
 package version
 
-const RegistryDigest = "6f21efb11d0998a3888ae2b49bf63a19b6befb407fd10cdbc615aa5042c2504a"
+const RegistryDigest = "54c81597c9c758446c3b12c8678212711433b95f3e0346a7051272ca2d03702e"
 
 // CompatibilityVersions returns a detached copy of the frozen Mission 1 compatibility set.
 func CompatibilityVersions() map[string]int {

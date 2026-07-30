@@ -16,11 +16,13 @@ printf '%s\n' "$version_json" | grep -E '"registry_digest":"[0-9a-f]{64}"' >/dev
 
 doctor_json=$($alias_binary doctor --json)
 printf '%s\n' "$doctor_json" | grep -F '"healthy":true' >/dev/null
-printf '%s\n' "$doctor_json" | grep -F '"foundation_only":true' >/dev/null
-printf '%s\n' "$doctor_json" | grep -F '"later_runtime_activated":false' >/dev/null
+printf '%s\n' "$doctor_json" | grep -F '"foundation_only":false' >/dev/null
+printf '%s\n' "$doctor_json" | grep -F '"later_runtime_activated":true' >/dev/null
 printf '%s\n' "$doctor_json" | grep -F '"alias":true' >/dev/null
 
 list_json=$($binary registry list --json)
+printf '%s\n' "$list_json" | grep -F '"name":"machine.create"' >/dev/null
+printf '%s\n' "$list_json" | grep -F '"name":"machine.inspect"' >/dev/null
 printf '%s\n' "$list_json" | grep -F '"name":"registry.describe"' >/dev/null
 printf '%s\n' "$list_json" | grep -F '"name":"system.version"' >/dev/null
 
@@ -42,4 +44,4 @@ printf '%s\n' "$unknown_output" | grep -F '"code":"unknown_operation"' >/dev/nul
 [[ $bare_status -eq 5 ]] || { printf 'bare invocation exit status=%d output=%s\n' "$bare_status" "$bare_output" >&2; exit 1; }
 [[ $duplicate_status -eq 2 ]] || { printf 'duplicate flag exit status=%d output=%s\n' "$duplicate_status" "$duplicate_output" >&2; exit 1; }
 
-printf 'CLI integration passed: diagnostics=4 alias=ej negative_paths=3\n'
+printf 'CLI integration passed: operations=6 active_machine=2 alias=ej negative_paths=3\n'

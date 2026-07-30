@@ -184,8 +184,8 @@ func diagnosticResult(catalog registry.Catalog, invocation string) DiagnosticRes
 		Architecture:                   runtime.GOARCH,
 		Invocation:                     invocation,
 		Alias:                          invocation == "ej",
-		FoundationOnly:                 true,
-		LaterRuntimeActivated:          false,
+		FoundationOnly:                 false,
+		LaterRuntimeActivated:          true,
 	}
 }
 

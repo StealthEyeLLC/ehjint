@@ -78,7 +78,7 @@ func TestRegistryListAndDescribe(t *testing.T) {
 	if err := json.Unmarshal(stdout, &list); err != nil {
 		t.Fatal(err)
 	}
-	if len(list.Operations) != 4 || list.Operations[0].Name != "registry.describe" {
+	if len(list.Operations) != 6 || list.Operations[0].Name != "machine.create" {
 		t.Fatalf("unexpected operation list: %+v", list.Operations)
 	}
 
@@ -95,7 +95,7 @@ func TestRegistryListAndDescribe(t *testing.T) {
 	}
 }
 
-func TestDoctorReportsFoundationOnly(t *testing.T) {
+func TestDoctorReportsActivatedLifecycle(t *testing.T) {
 	code, stdout, stderr := runJSON(t, "ej", "doctor")
 	if code != 0 {
 		t.Fatalf("doctor code = %d, stderr = %q", code, stderr)
@@ -104,7 +104,7 @@ func TestDoctorReportsFoundationOnly(t *testing.T) {
 	if err := json.Unmarshal(stdout, &diagnostic); err != nil {
 		t.Fatal(err)
 	}
-	if !diagnostic.Healthy || !diagnostic.FoundationOnly || diagnostic.LaterRuntimeActivated || !diagnostic.Alias {
+	if !diagnostic.Healthy || diagnostic.FoundationOnly || !diagnostic.LaterRuntimeActivated || !diagnostic.Alias {
 		t.Fatalf("unexpected diagnostic: %+v", diagnostic)
 	}
 }
@@ -116,7 +116,7 @@ func TestBareInvocationFailsClosed(t *testing.T) {
 	if code != contracts.ExitStatus(contracts.CodeFailedPrecondition) {
 		t.Fatalf("Run() code = %d", code)
 	}
-	if stdout.Len() != 0 || !strings.Contains(stderr.String(), "Mission 1 provides diagnostics only") {
+	if stdout.Len() != 0 || !strings.Contains(stderr.String(), "choose a registry-declared EHJINT operation") {
 		t.Fatalf("stdout=%q stderr=%q", stdout.String(), stderr.String())
 	}
 }

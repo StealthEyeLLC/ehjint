@@ -15,6 +15,7 @@ import (
 
 var operationNamePattern = regexp.MustCompile(`^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$`)
 var cliTokenPattern = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
+var cliArgumentPattern = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
 
 // Source is the strict human-authored registry source.
 type Source struct {
@@ -172,7 +173,7 @@ func normalizeOperation(operation *Operation) error {
 	seenArguments := make(map[string]bool, len(operation.CLI.Arguments))
 	optionalSeen := false
 	for _, argument := range operation.CLI.Arguments {
-		if !cliTokenPattern.MatchString(argument.Name) || seenArguments[argument.Name] {
+		if !cliArgumentPattern.MatchString(argument.Name) || seenArguments[argument.Name] {
 			return fmt.Errorf("operation %q has invalid or duplicate CLI argument %q", operation.Name, argument.Name)
 		}
 		if optionalSeen && argument.Required {
@@ -189,7 +190,7 @@ func normalizeOperation(operation *Operation) error {
 	if operation.MCP.Tool != "ehjint" || operation.MCP.Operation != operation.Name {
 		return fmt.Errorf("operation %q has divergent MCP mapping", operation.Name)
 	}
-	if operation.Availability != "foundation" && operation.Availability != "future" {
+	if operation.Availability != "foundation" && operation.Availability != "active" && operation.Availability != "future" {
 		return fmt.Errorf("operation %q has invalid availability %q", operation.Name, operation.Availability)
 	}
 	if operation.Deprecation != nil {
@@ -285,7 +286,7 @@ func validErrorCode(code string) bool {
 	switch contracts.ErrorCode(code) {
 	case contracts.CodeInvalidArgument, contracts.CodeUnknownOperation, contracts.CodeUnsupportedVersion,
 		contracts.CodeSchemaMismatch, contracts.CodeConflict, contracts.CodeIdempotencyConflict,
-		contracts.CodeNotFound, contracts.CodeFailedPrecondition, contracts.CodeUnavailable,
+		contracts.CodeNotFound, contracts.CodePermissionDenied, contracts.CodeFailedPrecondition, contracts.CodeUnavailable,
 		contracts.CodeTimeout, contracts.CodeCancelled, contracts.CodeInternal:
 		return true
 	default:

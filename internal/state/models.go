@@ -178,7 +178,7 @@ func validDesired(state DesiredState) bool {
 
 var observedTransitions = map[ObservedState]map[ObservedState]bool{
 	ObservedAbsent:    {ObservedAbsent: true, ObservedPreparing: true, ObservedRemoving: true},
-	ObservedPreparing: {ObservedPreparing: true, ObservedStarting: true, ObservedRemoving: true, ObservedDegraded: true, ObservedAbsent: true},
+	ObservedPreparing: {ObservedPreparing: true, ObservedStarting: true, ObservedStopped: true, ObservedRemoving: true, ObservedDegraded: true, ObservedAbsent: true},
 	ObservedStarting:  {ObservedStarting: true, ObservedRunning: true, ObservedStopped: true, ObservedRemoving: true, ObservedDegraded: true, ObservedUnknown: true},
 	ObservedRunning:   {ObservedRunning: true, ObservedStopping: true, ObservedRemoving: true, ObservedDegraded: true, ObservedUnknown: true},
 	ObservedStopping:  {ObservedStopping: true, ObservedStopped: true, ObservedRemoving: true, ObservedDegraded: true, ObservedUnknown: true, ObservedAbsent: true},

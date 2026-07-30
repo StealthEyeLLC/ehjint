@@ -76,7 +76,7 @@ func TestGenerationDeterministicAcrossIndependentRoots(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(firstArtifacts) != len(secondArtifacts) || len(firstArtifacts) != 32 {
+	if len(firstArtifacts) != len(secondArtifacts) || len(firstArtifacts) != 36 {
 		t.Fatalf("artifact counts differ: %d %d", len(firstArtifacts), len(secondArtifacts))
 	}
 	for index := range firstArtifacts {

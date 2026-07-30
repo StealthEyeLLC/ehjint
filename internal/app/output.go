@@ -63,6 +63,9 @@ func writeResult(writer io.Writer, jsonOutput bool, operation registry.Operation
 		)
 		return err
 	default:
-		return fmt.Errorf("no human renderer for operation %q", operation)
+		encoder := json.NewEncoder(writer)
+		encoder.SetEscapeHTML(false)
+		encoder.SetIndent("", "  ")
+		return encoder.Encode(result)
 	}
 }

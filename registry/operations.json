@@ -2,6 +2,227 @@
   "schema_version": 1,
   "operations": [
     {
+      "name": "machine.create",
+      "version": 1,
+      "summary": "Durably allocate and prepare one isolated EHJINT machine without starting it.",
+      "classification": "mutating",
+      "input_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "vcpus",
+          "memory_mib",
+          "root_disk_gib"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{0,62}$"
+          },
+          "vcpus": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 64
+          },
+          "memory_mib": {
+            "type": "integer",
+            "minimum": 256,
+            "maximum": 262144
+          },
+          "root_disk_gib": {
+            "type": "integer",
+            "minimum": 4,
+            "maximum": 2048
+          }
+        }
+      },
+      "output_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "machine",
+          "authority",
+          "host_identity",
+          "operation",
+          "preparation_verified",
+          "resources",
+          "transitions"
+        ],
+        "properties": {
+          "machine": {
+            "type": "object"
+          },
+          "authority": {
+            "type": "object"
+          },
+          "host_identity": {
+            "type": "object"
+          },
+          "operation": {
+            "type": "object"
+          },
+          "preparation_verified": {
+            "type": "boolean"
+          },
+          "resources": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "transitions": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "unknown_fields": "reject",
+      "idempotency": "required",
+      "streaming": "none",
+      "result_mode": "single",
+      "cancellation": "cooperative",
+      "required_machine_state": "absent",
+      "error_codes": [
+        "conflict",
+        "failed_precondition",
+        "internal",
+        "invalid_argument",
+        "permission_denied"
+      ],
+      "cli": {
+        "path": [
+          "machine",
+          "create"
+        ],
+        "arguments": [
+          {
+            "name": "name",
+            "required": true
+          },
+          {
+            "name": "vcpus",
+            "required": true
+          },
+          {
+            "name": "memory_mib",
+            "required": true
+          },
+          {
+            "name": "root_disk_gib",
+            "required": true
+          }
+        ],
+        "json_flag": true
+      },
+      "mcp": {
+        "tool": "ehjint",
+        "operation": "machine.create"
+      },
+      "availability": "active",
+      "deprecation": null
+    },
+    {
+      "name": "machine.inspect",
+      "version": 1,
+      "summary": "Inspect durable machine identity, preparation, resources, and lifecycle transition truth.",
+      "classification": "read_only",
+      "input_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "machine"
+        ],
+        "properties": {
+          "machine": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        }
+      },
+      "output_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "machine",
+          "authority",
+          "host_identity",
+          "operation",
+          "preparation_verified",
+          "resources",
+          "transitions"
+        ],
+        "properties": {
+          "machine": {
+            "type": "object"
+          },
+          "authority": {
+            "type": "object"
+          },
+          "host_identity": {
+            "type": "object"
+          },
+          "operation": {
+            "type": "object"
+          },
+          "preparation_verified": {
+            "type": "boolean"
+          },
+          "resources": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "transitions": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "unknown_fields": "reject",
+      "idempotency": "none",
+      "streaming": "none",
+      "result_mode": "single",
+      "cancellation": "not_applicable",
+      "required_machine_state": "any",
+      "error_codes": [
+        "failed_precondition",
+        "internal",
+        "invalid_argument",
+        "not_found",
+        "permission_denied"
+      ],
+      "cli": {
+        "path": [
+          "machine",
+          "inspect"
+        ],
+        "arguments": [
+          {
+            "name": "machine",
+            "required": true
+          }
+        ],
+        "json_flag": true
+      },
+      "mcp": {
+        "tool": "ehjint",
+        "operation": "machine.inspect"
+      },
+      "availability": "active",
+      "deprecation": null
+    },
+    {
       "name": "registry.describe",
       "version": 1,
       "summary": "Describe one operation from the canonical registry.",
@@ -10,7 +231,9 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "additionalProperties": false,
-        "required": ["operation"],
+        "required": [
+          "operation"
+        ],
         "properties": {
           "operation": {
             "type": "string",
@@ -22,29 +245,117 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "additionalProperties": false,
-        "required": ["registry_digest", "operation"],
+        "required": [
+          "registry_digest",
+          "operation"
+        ],
         "properties": {
-          "registry_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "registry_digest": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
           "operation": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["name", "version", "summary", "classification", "unknown_fields", "idempotency", "streaming", "result_mode", "cancellation", "required_machine_state", "error_codes", "cli_path", "mcp_tool", "availability", "deprecated"],
+            "required": [
+              "name",
+              "version",
+              "summary",
+              "classification",
+              "unknown_fields",
+              "idempotency",
+              "streaming",
+              "result_mode",
+              "cancellation",
+              "required_machine_state",
+              "error_codes",
+              "cli_path",
+              "mcp_tool",
+              "availability",
+              "deprecated"
+            ],
             "properties": {
-              "name": {"type": "string"},
-              "version": {"type": "integer", "const": 1},
-              "summary": {"type": "string"},
-              "classification": {"type": "string", "enum": ["read_only", "mutating"]},
-              "unknown_fields": {"type": "string", "const": "reject"},
-              "idempotency": {"type": "string", "enum": ["none", "optional", "required"]},
-              "streaming": {"type": "string", "enum": ["none", "bounded", "resumable"]},
-              "result_mode": {"type": "string", "enum": ["single", "stream"]},
-              "cancellation": {"type": "string", "enum": ["not_applicable", "cooperative"]},
-              "required_machine_state": {"type": "string"},
-              "error_codes": {"type": "array", "items": {"type": "string"}},
-              "cli_path": {"type": "array", "items": {"type": "string"}},
-              "mcp_tool": {"type": "string", "const": "ehjint"},
-              "availability": {"type": "string", "enum": ["foundation", "future"]},
-              "deprecated": {"type": "boolean"}
+              "name": {
+                "type": "string"
+              },
+              "version": {
+                "type": "integer",
+                "const": 1
+              },
+              "summary": {
+                "type": "string"
+              },
+              "classification": {
+                "type": "string",
+                "enum": [
+                  "read_only",
+                  "mutating"
+                ]
+              },
+              "unknown_fields": {
+                "type": "string",
+                "const": "reject"
+              },
+              "idempotency": {
+                "type": "string",
+                "enum": [
+                  "none",
+                  "optional",
+                  "required"
+                ]
+              },
+              "streaming": {
+                "type": "string",
+                "enum": [
+                  "none",
+                  "bounded",
+                  "resumable"
+                ]
+              },
+              "result_mode": {
+                "type": "string",
+                "enum": [
+                  "single",
+                  "stream"
+                ]
+              },
+              "cancellation": {
+                "type": "string",
+                "enum": [
+                  "not_applicable",
+                  "cooperative"
+                ]
+              },
+              "required_machine_state": {
+                "type": "string"
+              },
+              "error_codes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "cli_path": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "mcp_tool": {
+                "type": "string",
+                "const": "ehjint"
+              },
+              "availability": {
+                "type": "string",
+                "enum": [
+                  "foundation",
+                  "active",
+                  "future"
+                ]
+              },
+              "deprecated": {
+                "type": "boolean"
+              }
             }
           }
         }
@@ -55,13 +366,28 @@
       "result_mode": "single",
       "cancellation": "not_applicable",
       "required_machine_state": "none",
-      "error_codes": ["internal", "invalid_argument", "unknown_operation"],
+      "error_codes": [
+        "internal",
+        "invalid_argument",
+        "unknown_operation"
+      ],
       "cli": {
-        "path": ["registry", "describe"],
-        "arguments": [{"name": "operation", "required": true}],
+        "path": [
+          "registry",
+          "describe"
+        ],
+        "arguments": [
+          {
+            "name": "operation",
+            "required": true
+          }
+        ],
         "json_flag": true
       },
-      "mcp": {"tool": "ehjint", "operation": "registry.describe"},
+      "mcp": {
+        "tool": "ehjint",
+        "operation": "registry.describe"
+      },
       "availability": "foundation",
       "deprecation": null
     },
@@ -80,21 +406,53 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "additionalProperties": false,
-        "required": ["registry_digest", "operations"],
+        "required": [
+          "registry_digest",
+          "operations"
+        ],
         "properties": {
-          "registry_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "registry_digest": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
           "operations": {
             "type": "array",
             "items": {
               "type": "object",
               "additionalProperties": false,
-              "required": ["name", "version", "summary", "classification", "availability"],
+              "required": [
+                "name",
+                "version",
+                "summary",
+                "classification",
+                "availability"
+              ],
               "properties": {
-                "name": {"type": "string"},
-                "version": {"type": "integer", "const": 1},
-                "summary": {"type": "string"},
-                "classification": {"type": "string", "enum": ["read_only", "mutating"]},
-                "availability": {"type": "string", "enum": ["foundation", "future"]}
+                "name": {
+                  "type": "string"
+                },
+                "version": {
+                  "type": "integer",
+                  "const": 1
+                },
+                "summary": {
+                  "type": "string"
+                },
+                "classification": {
+                  "type": "string",
+                  "enum": [
+                    "read_only",
+                    "mutating"
+                  ]
+                },
+                "availability": {
+                  "type": "string",
+                  "enum": [
+                    "foundation",
+                    "active",
+                    "future"
+                  ]
+                }
               }
             }
           }
@@ -106,16 +464,28 @@
       "result_mode": "single",
       "cancellation": "not_applicable",
       "required_machine_state": "none",
-      "error_codes": ["internal"],
-      "cli": {"path": ["registry", "list"], "arguments": [], "json_flag": true},
-      "mcp": {"tool": "ehjint", "operation": "registry.list"},
+      "error_codes": [
+        "internal"
+      ],
+      "cli": {
+        "path": [
+          "registry",
+          "list"
+        ],
+        "arguments": [],
+        "json_flag": true
+      },
+      "mcp": {
+        "tool": "ehjint",
+        "operation": "registry.list"
+      },
       "availability": "foundation",
       "deprecation": null
     },
     {
       "name": "system.diagnose",
       "version": 1,
-      "summary": "Validate the non-mutating EHJINT foundation and report exact diagnostic truth.",
+      "summary": "Validate the EHJINT foundation and activated machine lifecycle contracts.",
       "classification": "read_only",
       "input_schema": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -127,23 +497,71 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "additionalProperties": false,
-        "required": ["healthy", "product_version", "go_version", "registry_schema_valid", "registry_digest_agreement", "generated_artifact_agreement", "compatibility_versions_available", "dependency_lock_readable", "provider_contracts_valid", "platform", "architecture", "invocation", "alias", "foundation_only", "later_runtime_activated"],
+        "required": [
+          "healthy",
+          "product_version",
+          "go_version",
+          "registry_schema_valid",
+          "registry_digest_agreement",
+          "generated_artifact_agreement",
+          "compatibility_versions_available",
+          "dependency_lock_readable",
+          "provider_contracts_valid",
+          "platform",
+          "architecture",
+          "invocation",
+          "alias",
+          "foundation_only",
+          "later_runtime_activated"
+        ],
         "properties": {
-          "healthy": {"type": "boolean"},
-          "product_version": {"type": "string"},
-          "go_version": {"type": "string"},
-          "registry_schema_valid": {"type": "boolean"},
-          "registry_digest_agreement": {"type": "boolean"},
-          "generated_artifact_agreement": {"type": "boolean"},
-          "compatibility_versions_available": {"type": "boolean"},
-          "dependency_lock_readable": {"type": "boolean"},
-          "provider_contracts_valid": {"type": "boolean"},
-          "platform": {"type": "string"},
-          "architecture": {"type": "string"},
-          "invocation": {"type": "string"},
-          "alias": {"type": "boolean"},
-          "foundation_only": {"type": "boolean", "const": true},
-          "later_runtime_activated": {"type": "boolean", "const": false}
+          "healthy": {
+            "type": "boolean"
+          },
+          "product_version": {
+            "type": "string"
+          },
+          "go_version": {
+            "type": "string"
+          },
+          "registry_schema_valid": {
+            "type": "boolean"
+          },
+          "registry_digest_agreement": {
+            "type": "boolean"
+          },
+          "generated_artifact_agreement": {
+            "type": "boolean"
+          },
+          "compatibility_versions_available": {
+            "type": "boolean"
+          },
+          "dependency_lock_readable": {
+            "type": "boolean"
+          },
+          "provider_contracts_valid": {
+            "type": "boolean"
+          },
+          "platform": {
+            "type": "string"
+          },
+          "architecture": {
+            "type": "string"
+          },
+          "invocation": {
+            "type": "string"
+          },
+          "alias": {
+            "type": "boolean"
+          },
+          "foundation_only": {
+            "type": "boolean",
+            "const": false
+          },
+          "later_runtime_activated": {
+            "type": "boolean",
+            "const": true
+          }
         }
       },
       "unknown_fields": "reject",
@@ -152,9 +570,22 @@
       "result_mode": "single",
       "cancellation": "not_applicable",
       "required_machine_state": "none",
-      "error_codes": ["failed_precondition", "internal", "schema_mismatch"],
-      "cli": {"path": ["doctor"], "arguments": [], "json_flag": true},
-      "mcp": {"tool": "ehjint", "operation": "system.diagnose"},
+      "error_codes": [
+        "failed_precondition",
+        "internal",
+        "schema_mismatch"
+      ],
+      "cli": {
+        "path": [
+          "doctor"
+        ],
+        "arguments": [],
+        "json_flag": true
+      },
+      "mcp": {
+        "tool": "ehjint",
+        "operation": "system.diagnose"
+      },
       "availability": "foundation",
       "deprecation": null
     },
@@ -173,30 +604,91 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "additionalProperties": false,
-        "required": ["product", "product_version", "go_version", "registry_digest", "compatibility", "invocation"],
+        "required": [
+          "product",
+          "product_version",
+          "go_version",
+          "registry_digest",
+          "compatibility",
+          "invocation"
+        ],
         "properties": {
-          "product": {"type": "string", "const": "EHJINT"},
-          "product_version": {"type": "string", "const": "0.0.0-dev"},
-          "go_version": {"type": "string"},
-          "registry_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "product": {
+            "type": "string",
+            "const": "EHJINT"
+          },
+          "product_version": {
+            "type": "string",
+            "const": "0.0.0-dev"
+          },
+          "go_version": {
+            "type": "string"
+          },
+          "registry_digest": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
           "compatibility": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["dependency_lock", "error_envelope", "idempotency", "input_output_schema", "machine_manifest", "operation_catalog", "operation_registry_source", "provider_contract", "release_manifest", "result_envelope"],
+            "required": [
+              "dependency_lock",
+              "error_envelope",
+              "idempotency",
+              "input_output_schema",
+              "machine_manifest",
+              "operation_catalog",
+              "operation_registry_source",
+              "provider_contract",
+              "release_manifest",
+              "result_envelope"
+            ],
             "properties": {
-              "dependency_lock": {"type": "integer", "const": 1},
-              "error_envelope": {"type": "integer", "const": 1},
-              "idempotency": {"type": "integer", "const": 1},
-              "input_output_schema": {"type": "integer", "const": 1},
-              "machine_manifest": {"type": "integer", "const": 1},
-              "operation_catalog": {"type": "integer", "const": 1},
-              "operation_registry_source": {"type": "integer", "const": 1},
-              "provider_contract": {"type": "integer", "const": 1},
-              "release_manifest": {"type": "integer", "const": 1},
-              "result_envelope": {"type": "integer", "const": 1}
+              "dependency_lock": {
+                "type": "integer",
+                "const": 1
+              },
+              "error_envelope": {
+                "type": "integer",
+                "const": 1
+              },
+              "idempotency": {
+                "type": "integer",
+                "const": 1
+              },
+              "input_output_schema": {
+                "type": "integer",
+                "const": 1
+              },
+              "machine_manifest": {
+                "type": "integer",
+                "const": 1
+              },
+              "operation_catalog": {
+                "type": "integer",
+                "const": 1
+              },
+              "operation_registry_source": {
+                "type": "integer",
+                "const": 1
+              },
+              "provider_contract": {
+                "type": "integer",
+                "const": 1
+              },
+              "release_manifest": {
+                "type": "integer",
+                "const": 1
+              },
+              "result_envelope": {
+                "type": "integer",
+                "const": 1
+              }
             }
           },
-          "invocation": {"type": "string"}
+          "invocation": {
+            "type": "string"
+          }
         }
       },
       "unknown_fields": "reject",
@@ -205,9 +697,20 @@
       "result_mode": "single",
       "cancellation": "not_applicable",
       "required_machine_state": "none",
-      "error_codes": ["internal"],
-      "cli": {"path": ["version"], "arguments": [], "json_flag": true},
-      "mcp": {"tool": "ehjint", "operation": "system.version"},
+      "error_codes": [
+        "internal"
+      ],
+      "cli": {
+        "path": [
+          "version"
+        ],
+        "arguments": [],
+        "json_flag": true
+      },
+      "mcp": {
+        "tool": "ehjint",
+        "operation": "system.version"
+      },
       "availability": "foundation",
       "deprecation": null
     }

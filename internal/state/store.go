@@ -18,7 +18,7 @@ import (
 const (
 	// SchemaVersion is the compact controller database schema implemented by
 	// Mission 2.
-	SchemaVersion = 1
+	SchemaVersion = 2
 	// BusyTimeout is deliberately bounded: callers receive explicit contention
 	// truth rather than waiting forever.
 	BusyTimeout = 5 * time.Second
@@ -224,6 +224,15 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
 		}
 		version = 1
 	}
+	if version == 1 {
+		if _, err := transaction.ExecContext(ctx, migration2); err != nil {
+			return fmt.Errorf("apply controller migration 2: %w", err)
+		}
+		if _, err := transaction.ExecContext(ctx, `INSERT INTO schema_migrations(version, applied_at) VALUES(2, ?)`, store.timestamp()); err != nil {
+			return fmt.Errorf("record controller migration 2: %w", err)
+		}
+		version = 2
+	}
 	if version != SchemaVersion {
 		return fmt.Errorf("no migration path from schema %d to %d", version, SchemaVersion)
 	}
@@ -311,4 +320,60 @@ CREATE TABLE compatibility_records (
     digest TEXT NOT NULL CHECK(length(digest) = 64),
     updated_at TEXT NOT NULL
 );
+`
+
+const migration2 = `
+CREATE UNIQUE INDEX machines_manifest_path_unique ON machines(manifest_path);
+CREATE UNIQUE INDEX machines_api_socket_unique ON machines(api_socket);
+CREATE UNIQUE INDEX machines_vsock_socket_unique ON machines(vsock_socket);
+
+CREATE TABLE machine_authority (
+    machine_id TEXT PRIMARY KEY,
+    creation_operation_id TEXT NOT NULL,
+    owner_uid INTEGER NOT NULL CHECK(owner_uid >= 0),
+    host_username TEXT NOT NULL UNIQUE,
+    host_groupname TEXT NOT NULL UNIQUE,
+    kvm_gid INTEGER NOT NULL CHECK(kvm_gid > 0),
+    state_directory TEXT NOT NULL UNIQUE,
+    runtime_directory TEXT NOT NULL UNIQUE,
+    overlay_path TEXT NOT NULL UNIQUE,
+    seed_path TEXT NOT NULL UNIQUE,
+    pki_directory TEXT NOT NULL UNIQUE,
+    ca_certificate_path TEXT NOT NULL UNIQUE,
+    ca_private_key_path TEXT NOT NULL UNIQUE,
+    controller_certificate_path TEXT NOT NULL UNIQUE,
+    controller_private_key_path TEXT NOT NULL UNIQUE,
+    guest_certificate_path TEXT NOT NULL UNIQUE,
+    guest_private_key_path TEXT NOT NULL UNIQUE,
+    vmm_identity_path TEXT NOT NULL UNIQUE,
+    vmm_executable_path TEXT NOT NULL,
+    firmware_path TEXT NOT NULL,
+    base_image_path TEXT NOT NULL,
+    cpu_count INTEGER NOT NULL CHECK(cpu_count > 0),
+    memory_bytes INTEGER NOT NULL CHECK(memory_bytes >= 134217728),
+    root_disk_bytes INTEGER NOT NULL CHECK(root_disk_bytes >= 1048576),
+    network_disabled INTEGER NOT NULL CHECK(network_disabled IN (0,1)),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY(machine_id) REFERENCES machines(machine_id) ON DELETE RESTRICT
+);
+CREATE INDEX machine_authority_owner_index ON machine_authority(owner_uid);
+
+CREATE TABLE machine_transitions (
+    transition_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    machine_id TEXT NOT NULL,
+    previous_state TEXT NOT NULL,
+    requested_state TEXT NOT NULL,
+    operation_id TEXT NOT NULL,
+    idempotency_key TEXT NOT NULL,
+    transition_at TEXT NOT NULL,
+    expected_resources TEXT NOT NULL,
+    observed_resources TEXT NOT NULL,
+    failure_code TEXT NOT NULL DEFAULT '',
+    failure_message TEXT NOT NULL DEFAULT '',
+    recovery_disposition TEXT NOT NULL,
+    UNIQUE(operation_id, previous_state, requested_state),
+    FOREIGN KEY(machine_id) REFERENCES machines(machine_id) ON DELETE RESTRICT
+);
+CREATE INDEX machine_transitions_machine_index ON machine_transitions(machine_id, transition_id);
 `

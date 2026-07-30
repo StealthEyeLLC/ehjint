@@ -2,16 +2,48 @@
 
 # EHJINT operation catalog
 
-Registry SHA-256: `6f21efb11d0998a3888ae2b49bf63a19b6befb407fd10cdbc615aa5042c2504a`
+Registry SHA-256: `54c81597c9c758446c3b12c8678212711433b95f3e0346a7051272ca2d03702e`
 
 Every row below is derived from `registry/operations.json`. The semantic operation name is the authority shared by the CLI and MCP surfaces.
 
 | Operation | Version | Class | CLI | MCP tool | Idempotency | Streaming | Availability |
 |---|---:|---|---|---|---|---|---|
+| `machine.create` | 1 | `mutating` | `ehjint machine create <name> <vcpus> <memory_mib> <root_disk_gib>` | `ehjint` | `required` | `none` | `active` |
+| `machine.inspect` | 1 | `read_only` | `ehjint machine inspect <machine>` | `ehjint` | `none` | `none` | `active` |
 | `registry.describe` | 1 | `read_only` | `ehjint registry describe <operation>` | `ehjint` | `none` | `none` | `foundation` |
 | `registry.list` | 1 | `read_only` | `ehjint registry list` | `ehjint` | `none` | `none` | `foundation` |
 | `system.diagnose` | 1 | `read_only` | `ehjint doctor` | `ehjint` | `none` | `none` | `foundation` |
 | `system.version` | 1 | `read_only` | `ehjint version` | `ehjint` | `none` | `none` | `foundation` |
+
+## `machine.create`
+
+Durably allocate and prepare one isolated EHJINT machine without starting it.
+
+- Version: `1`
+- Classification: `mutating`
+- Unknown input fields: `reject`
+- Required machine state: `absent`
+- Cancellation: `cooperative`
+- Result mode: `single`
+- CLI: `ehjint machine create <name> <vcpus> <memory_mib> <root_disk_gib>`
+- MCP: tool `ehjint`, operation `machine.create`
+- Stable errors: `conflict`, `failed_precondition`, `internal`, `invalid_argument`, `permission_denied`
+- Deprecation: none
+
+## `machine.inspect`
+
+Inspect durable machine identity, preparation, resources, and lifecycle transition truth.
+
+- Version: `1`
+- Classification: `read_only`
+- Unknown input fields: `reject`
+- Required machine state: `any`
+- Cancellation: `not_applicable`
+- Result mode: `single`
+- CLI: `ehjint machine inspect <machine>`
+- MCP: tool `ehjint`, operation `machine.inspect`
+- Stable errors: `failed_precondition`, `internal`, `invalid_argument`, `not_found`, `permission_denied`
+- Deprecation: none
 
 ## `registry.describe`
 
@@ -45,7 +77,7 @@ List operations from the canonical registry in stable lexical order.
 
 ## `system.diagnose`
 
-Validate the non-mutating EHJINT foundation and report exact diagnostic truth.
+Validate the EHJINT foundation and activated machine lifecycle contracts.
 
 - Version: `1`
 - Classification: `read_only`

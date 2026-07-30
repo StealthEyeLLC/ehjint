@@ -1,8 +1,10 @@
 package registry
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -80,8 +82,17 @@ func (catalog Catalog) ResolveCLI(arguments []string) (Operation, map[string]any
 			return Operation{}, nil, fmt.Errorf("%s expects %d..%d positional arguments", strings.Join(operation.CLI.Path, " "), required, len(operation.CLI.Arguments))
 		}
 		input := make(map[string]any, len(values))
+		propertyTypes, err := operationInputTypes(operation.InputSchema)
+		if err != nil {
+			return Operation{}, nil, fmt.Errorf("%s input schema: %w", operation.Name, err)
+		}
 		for index, value := range values {
-			input[operation.CLI.Arguments[index].Name] = value
+			name := operation.CLI.Arguments[index].Name
+			converted, err := convertCLIValue(name, value, propertyTypes[name])
+			if err != nil {
+				return Operation{}, nil, err
+			}
+			input[name] = converted
 		}
 		return cloneOperation(operation), input, nil
 	}
@@ -100,4 +111,45 @@ func cloneOperation(operation Operation) Operation {
 		cloned.Deprecation = &deprecation
 	}
 	return cloned
+}
+
+func operationInputTypes(raw json.RawMessage) (map[string]string, error) {
+	var schema struct {
+		Properties map[string]json.RawMessage `json:"properties"`
+	}
+	if err := json.Unmarshal(raw, &schema); err != nil {
+		return nil, err
+	}
+	result := make(map[string]string, len(schema.Properties))
+	for name, property := range schema.Properties {
+		var typed struct {
+			Type string `json:"type"`
+		}
+		if err := json.Unmarshal(property, &typed); err != nil {
+			return nil, err
+		}
+		result[name] = typed.Type
+	}
+	return result, nil
+}
+
+func convertCLIValue(name, value, propertyType string) (any, error) {
+	switch propertyType {
+	case "", "string":
+		return value, nil
+	case "integer":
+		parsed, err := strconv.ParseInt(value, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("%s must be an integer", name)
+		}
+		return parsed, nil
+	case "boolean":
+		parsed, err := strconv.ParseBool(value)
+		if err != nil {
+			return nil, fmt.Errorf("%s must be a boolean", name)
+		}
+		return parsed, nil
+	default:
+		return nil, fmt.Errorf("%s cannot be supplied positionally for schema type %q", name, propertyType)
+	}
 }

@@ -340,3 +340,79 @@ func TestObservedTransitionMatrixRejectsUnknowns(t *testing.T) {
 		t.Fatal("unknown source accepted")
 	}
 }
+
+func TestMachineAuthorityAllocationTransitionAndCollisions(t *testing.T) {
+	store, path := openTestStore(t)
+	defer store.Close()
+	ctx := context.Background()
+	spec := testMachineSpec(filepath.Dir(path))
+	authority := testMachineAuthority(spec, filepath.Dir(path))
+
+	machine, allocated, replay, err := store.AllocateMachine(ctx, spec, authority)
+	if err != nil || replay || machine.MachineID != spec.MachineID || allocated.HostUsername != authority.HostUsername {
+		t.Fatalf("allocate machine = %+v %+v replay=%v err=%v", machine, allocated, replay, err)
+	}
+	machine, allocated, replay, err = store.AllocateMachine(ctx, spec, authority)
+	if err != nil || !replay || allocated.RuntimeDirectory != authority.RuntimeDirectory {
+		t.Fatalf("replay allocation = %+v %+v replay=%v err=%v", machine, allocated, replay, err)
+	}
+
+	conflictSpec := spec
+	conflictSpec.MachineID = "mach_aaaaaaaaaaaaaaaaaaaaaaaaaa"
+	conflictSpec.StableName = "other-machine"
+	conflictSpec.ManifestPath = filepath.Join(filepath.Dir(path), "other", "manifest.json")
+	conflictSpec.APISocket = filepath.Join(filepath.Dir(path), "other", "api.sock")
+	conflictSpec.VsockSocket = filepath.Join(filepath.Dir(path), "other", "vsock.sock")
+	conflictSpec.VMMIdentity = "ehjint-vmm-other"
+	conflictSpec.VMMUID++
+	conflictSpec.VMMGID++
+	conflictSpec.VsockCID++
+	conflict := authority
+	conflict.MachineID = conflictSpec.MachineID
+	conflict.CreationOperationID = "op_aaaaaaaaaaaaaaaaaaaaaaaaaa"
+	conflict.HostUsername = "ehjintm-other"
+	conflict.HostGroupname = "ehjintm-other"
+	conflict.StateDirectory = filepath.Join(filepath.Dir(path), "other")
+	conflict.RuntimeDirectory = filepath.Join(filepath.Dir(path), "runtime-other")
+	conflict.OverlayPath = filepath.Join(conflict.StateDirectory, "root.qcow2")
+	conflict.SeedPath = filepath.Join(conflict.StateDirectory, "cidata.img")
+	conflict.PKIDirectory = filepath.Join(conflict.StateDirectory, "pki")
+	conflict.CACertificatePath = filepath.Join(conflict.PKIDirectory, "ca.crt")
+	conflict.CAPrivateKeyPath = filepath.Join(conflict.PKIDirectory, "ca.key")
+	conflict.ControllerCertificatePath = filepath.Join(conflict.PKIDirectory, "controller.crt")
+	conflict.ControllerPrivateKeyPath = filepath.Join(conflict.PKIDirectory, "controller.key")
+	conflict.GuestCertificatePath = filepath.Join(conflict.PKIDirectory, "guest.crt")
+	conflict.GuestPrivateKeyPath = filepath.Join(conflict.PKIDirectory, "guest.key")
+	conflict.VMMIdentityPath = filepath.Join(conflict.StateDirectory, "vmm-identity.json")
+	conflict.OverlayPath = authority.OverlayPath
+	if _, _, _, err := store.AllocateMachine(ctx, conflictSpec, conflict); !errors.Is(err, ErrMachineConflict) {
+		t.Fatalf("overlay collision error = %v", err)
+	}
+
+	opID := "op_baaaaaaaaaaaaaaaaaaaaaaaaa"
+	machine, transition, err := store.TransitionMachineLifecycle(ctx, spec.MachineID, ObservedPreparing, opID, "prepare-key", `{"overlay":true}`, `{"overlay":false}`, "", "", "continue")
+	if err != nil || machine.ObservedState != ObservedPreparing || transition.PreviousState != ObservedAbsent || transition.RequestedState != ObservedPreparing {
+		t.Fatalf("transition = %+v %+v err=%v", machine, transition, err)
+	}
+	transitions, err := store.ListMachineTransitions(ctx, spec.MachineID)
+	if err != nil || len(transitions) != 1 || transitions[0].OperationID != opID {
+		t.Fatalf("transitions = %+v err=%v", transitions, err)
+	}
+}
+
+func testMachineAuthority(spec MachineSpec, root string) MachineAuthority {
+	stateDir := filepath.Join(root, spec.MachineID)
+	pkiDir := filepath.Join(stateDir, "pki")
+	return MachineAuthority{
+		MachineID: spec.MachineID, CreationOperationID: "op_aaaaaaaaaaaaaaaaaaaaaaaaaa", OwnerUID: 0,
+		HostUsername: "ehjintm-test", HostGroupname: "ehjintm-test", KVMGID: 108,
+		StateDirectory: stateDir, RuntimeDirectory: filepath.Join(root, "runtime", spec.MachineID),
+		OverlayPath: filepath.Join(stateDir, "root.qcow2"), SeedPath: filepath.Join(stateDir, "cidata.img"), PKIDirectory: pkiDir,
+		CACertificatePath: filepath.Join(pkiDir, "ca.crt"), CAPrivateKeyPath: filepath.Join(pkiDir, "ca.key"),
+		ControllerCertificatePath: filepath.Join(pkiDir, "controller.crt"), ControllerPrivateKeyPath: filepath.Join(pkiDir, "controller.key"),
+		GuestCertificatePath: filepath.Join(pkiDir, "guest.crt"), GuestPrivateKeyPath: filepath.Join(pkiDir, "guest.key"),
+		VMMIdentityPath: filepath.Join(stateDir, "vmm-identity.json"), VMMExecutablePath: "/opt/ehjint/cloud-hypervisor",
+		FirmwarePath: "/opt/ehjint/hypervisor-fw", BaseImagePath: "/opt/ehjint/ubuntu.img",
+		CPUCount: 2, MemoryBytes: 512 << 20, RootDiskBytes: 4 << 30, NetworkDisabled: true,
+	}
+}

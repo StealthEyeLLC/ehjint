@@ -384,3 +384,11 @@ func SortedCompatibilityNames() []string {
 	sort.Strings(result)
 	return result
 }
+
+// ValidateMachineName exposes the canonical public machine-name contract.
+func ValidateMachineName(name string) error {
+	if !machineNamePattern.MatchString(name) {
+		return fmt.Errorf("invalid machine name %q", name)
+	}
+	return nil
+}

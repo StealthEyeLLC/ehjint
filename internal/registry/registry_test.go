@@ -30,7 +30,7 @@ func TestCompiledCatalogIdentityAndOrdering(t *testing.T) {
 		t.Fatalf("compiled catalog identity mismatch: digest=%s version=%d", catalog.Digest(), catalog.SchemaVersion())
 	}
 	operations := catalog.List()
-	if len(operations) != 4 {
+	if len(operations) != 6 {
 		t.Fatalf("operation count = %d", len(operations))
 	}
 	for index := 1; index < len(operations); index++ {
@@ -65,7 +65,7 @@ func TestRegistryDigestIndependentOfSourceOrdering(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if digest != GeneratedRegistryDigest || parsed.Operations[0].Name != "registry.describe" {
+	if digest != GeneratedRegistryDigest || parsed.Operations[0].Name != "machine.create" {
 		t.Fatalf("normalization drift: digest=%s first=%s", digest, parsed.Operations[0].Name)
 	}
 }
@@ -122,6 +122,14 @@ func TestRegistryDerivedCLIResolution(t *testing.T) {
 	}
 	if operation.Name != "registry.describe" || input["operation"] != "system.version" {
 		t.Fatalf("unexpected CLI resolution: operation=%q input=%v", operation.Name, input)
+	}
+
+	create, createInput, err := catalog.ResolveCLI([]string{"machine", "create", "test-machine", "2", "512", "4"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if create.Name != "machine.create" || createInput["name"] != "test-machine" || createInput["vcpus"] != int64(2) || createInput["memory_mib"] != int64(512) || createInput["root_disk_gib"] != int64(4) {
+		t.Fatalf("unexpected machine create CLI resolution: operation=%q input=%#v", create.Name, createInput)
 	}
 	operation.CLI.Path[0] = "mutated"
 	fresh, _, err := catalog.ResolveCLI([]string{"registry", "describe", "system.version"})

@@ -451,7 +451,7 @@ func operationRegistrySourceSchema() map[string]any {
 			"error_codes":            namedStringArray(1),
 			"cli":                    cli,
 			"mcp":                    mcp,
-			"availability":           map[string]any{"type": "string", "enum": []string{"foundation", "future"}},
+			"availability":           map[string]any{"type": "string", "enum": []string{"foundation", "active", "future"}},
 			"deprecation":            map[string]any{"oneOf": []any{map[string]any{"type": "null"}, deprecation}},
 		},
 	)

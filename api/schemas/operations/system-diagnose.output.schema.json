@@ -17,7 +17,7 @@
       "type": "boolean"
     },
     "foundation_only": {
-      "const": true,
+      "const": false,
       "type": "boolean"
     },
     "generated_artifact_agreement": {
@@ -33,7 +33,7 @@
       "type": "string"
     },
     "later_runtime_activated": {
-      "const": false,
+      "const": true,
       "type": "boolean"
     },
     "platform": {

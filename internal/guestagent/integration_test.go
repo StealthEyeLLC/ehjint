@@ -259,13 +259,16 @@ func TestForegroundPTYAndResize(t *testing.T) {
 	harness := newHarness(t)
 	session := harness.connect(t)
 	defer session.Close()
-	request := rootRequest("sh", "-c", "stty size; printf pty-ok")
+	request := rootRequest("sh", "-c", "read ready; stty size; printf pty-ok")
 	request.PTY = &guestproto.PTYSpec{Rows: 33, Cols: 77, Term: "xterm-256color"}
 	execution, err := session.Start(operationID(t, 6), request)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := execution.Resize(34, 78); err != nil {
+		t.Fatal(err)
+	}
+	if err := execution.Stdin([]byte("ready\n")); err != nil {
 		t.Fatal(err)
 	}
 	result := collect(t, execution)

@@ -2,7 +2,7 @@
 
 # EHJINT Mission 1 contracts
 
-Registry SHA-256: `6f21efb11d0998a3888ae2b49bf63a19b6befb407fd10cdbc615aa5042c2504a`
+Registry SHA-256: `54c81597c9c758446c3b12c8678212711433b95f3e0346a7051272ca2d03702e`
 
 ## Compatibility versions
 
