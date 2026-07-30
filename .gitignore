@@ -1,0 +1,35 @@
+# Go outputs
+/bin/
+/dist/
+/coverage/
+*.test
+*.prof
+
+# Local runtime and build state
+/.cache/
+/.tmp/
+/tmp/
+/state/
+/releases/
+
+# Virtual machine artifacts
+*.qcow2
+*.raw
+*.img
+*.mem
+*.snap
+*.sock
+
+# Credentials and local configuration
+.env
+.env.*
+*.key
+*.pem
+*.p12
+*.token
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
